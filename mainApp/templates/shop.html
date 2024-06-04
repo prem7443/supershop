@@ -1,0 +1,104 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+<title>SuperShop | Shop</title>
+{% endblock %}
+
+{% block body %}
+
+<!-- breadcrumb part start-->
+<section class="breadcrumb_part">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="breadcrumb_iner">
+                    <h2>Shop</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- breadcrumb part end-->
+
+<!-- product list part start-->
+<section class="product_list py-3">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="product_sidebar">
+                    <div class="single_sedebar">
+                        <form action="/search/" method="post">
+                            {% csrf_token %}
+                            <input type="text" name="search" placeholder="Search keyword">
+                            <i class="ti-search"></i>
+                        </form>
+                    </div>
+                    <div class="single_sedebar">
+                        <div class="select_option">
+                            <div class="select_option_list">Maincategory <i class="right fas fa-caret-down"></i> </div>
+                            <div class="select_option_dropdown">
+                                <p><a href="/shop/All/{{sc}}/{{br}}/">All</a></p>
+                                {% for item in maincategory %}
+                                <p><a href="/shop/{{item.name}}/{{sc}}/{{br}}/"">{{item.name}}</a></p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="single_sedebar">
+                        <div class="select_option">
+                            <div class="select_option_list">Subcategory <i class="right fas fa-caret-down"></i> </div>
+                            <div class="select_option_dropdown">
+                                <p><a href="/shop/{{mc}}/All/{{br}}/">All</a></p>
+                                {% for item in subcategory %}
+                                <p><a href="/shop/{{mc}}/{{item.name}}/{{br}}/"">{{item.name}}</a></p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="single_sedebar">
+                        <div class="select_option">
+                            <div class="select_option_list">Brand <i class="right fas fa-caret-down"></i> </div>
+                            <div class="select_option_dropdown">
+                                <p><a href="/shop/{{mc}}/{{sc}}/All/">All</a></p>
+                                {% for item in brand %}
+                                <p><a href="/shop/{{mc}}/{{sc}}/{{item.name}}/">{{item.name}}</a></p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <div class="product_list">
+                    <div class="row">
+                        {% for item in products %}
+                        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-12">
+                            <div class="single_product_item">
+                                <div class="single_product_item_thumb">
+                                    <a href="/single-product/{{item.id}}">
+                                        <img src="{{item.pic1.url}}" style="height: 200px;width: 100%;" alt="#"
+                                            class="img-fluid">
+                                    </a>
+                                </div>
+                                <h3 style="height: 50px;"> <a href="/single-product/{{item.id}}">{{item.name}}</a> </h3>
+                                <p><del class="text-danger">&#8377;{{item.baseprice}}</del> &#8377;{{item.finalprice}}
+                                    <sup class="text-success">{{item.discount}}% Off</sup></p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="load_more_btn text-center">
+                        <a href="#" class="btn_3">Load More</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- product list part end-->
+
+
+
+
+{% endblock %}
