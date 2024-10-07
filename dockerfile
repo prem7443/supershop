@@ -1,13 +1,19 @@
-FROM python:3
+FROM python:3.9-slim-buster
 
-WORKDIR /data
+LABEL Name="Python Django Demo App" Version=1.0.0
+LABEL org.opencontainers.image.source="https://github.com/benc-uk/python-demoapp"
 
-RUN pip install django==3.2 razorpay pillow
+ARG srcDir=src
+WORKDIR /app
+COPY $srcDir/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy Django application
+COPY $srcDir/manage.py .
+COPY $srcDir/app ./app
 
-RUN python manage.py migrate
-
+# Expose the default Django port
 EXPOSE 8000
 
-CMD ["python","manage.py","runserver","0.0.0.0:8000"]
+# Run Django application using gunicorn
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "app.wsgi:application"]
