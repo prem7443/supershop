@@ -1,18 +1,29 @@
-- name: Checkout PR
-  uses: actions/checkout@v3
-  with:
-    ref: ${{ github.head_ref }}
+name: Reject PRs with Merge Conflicts
 
-- name: Check merge conflicts via GitHub API
-  run: |
-    git fetch origin ${{ github.event.pull_request.base.ref }}
-    if ! git merge-base --is-ancestor origin/${{ github.event.pull_request.base.ref }} HEAD; then
-      echo "PR has conflicts"
-      gh pr close "${{ github.event.pull_request.number }}" \
-        --comment "🚫 This pull request has merge conflicts with `${{ github.event.pull_request.base.ref }}`. Please rebase and resolve conflicts before creating a new PR."
-    else
-      echo "No conflicts"
-    fi
-  env:
-    GH_TOKEN: ${{ secrets.PR_REJECTION_TOKEN }}
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  reject-conflict-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Check merge conflict
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          if ! git merge-base --is-ancestor origin/${{ github.event.pull_request.base.ref }} HEAD; then
+            echo "PR has conflicts"
+            gh pr close "${{ github.event.pull_request.number }}" --comment "This pull request has merge conflicts with `${{ github.event.pull_request.base.ref }}`. Please rebase and resolve conflicts before creating a new PR."
+          else
+            echo "No conflicts"
+          fi  # This 'fi' closes the 'if' block
+        env:
+          GH_TOKEN: ${{ secrets.PR_REJECTION_TOKEN}}
+
+    
 
