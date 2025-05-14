@@ -1,9 +1,8 @@
-# .github/workflows/reject-conflicting-pr.yml
 name: Reject PRs with Merge Conflicts
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened]  # Trigger on PR opened, synchronized, or reopened
 
 jobs:
   reject-conflict-pr:
@@ -14,15 +13,29 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      - name: Check merge conflict
+      - name: Display GitHub Context
         run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          if ! git merge-base --is-ancestor origin/${{ github.event.pull_request.base.ref }} HEAD; then
+          echo "Event: ${{ github.event_name }}"
+          echo "PR number: ${{ github.event.pull_request.number }}"
+          echo "Base ref: ${{ github.event.pull_request.base.ref }}"
+          echo "Head ref: ${{ github.event.pull_request.head.ref }}"
+
+      - name: Install GitHub CLI
+        run: |
+          curl -fsSL https://cli.github.com/packages/release.gpg | gpg --dearmor -o /usr/share/keyrings/github-archive-keyring.gpg
+          sudo apt update
+          sudo apt install gh
+
+      - name: Check merge conflicts via GitHub API
+        run: |
+          conflict_check=$(gh pr view "${{ github.event.pull_request.number }}" --json mergeable --jq '.mergeable')
+          echo "Mergeable status: $conflict_check"
+          if [ "$conflict_check" != "TRUE" ]; then
             echo "PR has conflicts"
             gh pr close "${{ github.event.pull_request.number }}" \
-              --comment "This pull request has merge conflicts with `${{ github.event.pull_request.base.ref }}`. Please rebase and resolve conflicts before creating a new PR."
+              --comment "🚫 This pull request has merge conflicts. Please resolve them before reopening."
           else
             echo "No conflicts"
         env:
-          GH_TOKEN: ${{ secrets.PR_REJECTION_TOKEN }}
+           GH_TOKEN: ${{ secrets.PR_REJECTION_TOKEN }}
  
