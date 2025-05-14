@@ -1,45 +1,80 @@
+# close-conflicting-prs.yml
+
 name: Close PRs with Merge Conflicts
  
 on:
+
   pull_request:
+
     types: [opened, synchronize, reopened]
  
 jobs:
+
   check_merge_conflicts:
+
     runs-on: ubuntu-latest
  
     steps:
+
       - name: Check if PR has merge conflicts
+
         uses: actions/github-script@v7
+
         with:
-          github-token: ${{ secrets.PR_REJECTION_TOKEN }}
+
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
           script: |
+
             const pr = context.payload.pull_request;
+
             const { data: prDetails } = await github.rest.pulls.get({
+
               owner: context.repo.owner,
+
               repo: context.repo.repo,
+
               pull_number: pr.number,
+
             });
  
             if (prDetails.mergeable === false) {
+
               console.log(`❌ PR #${pr.number} has merge conflicts. Closing...`);
  
               await github.rest.issues.createComment({
+
                 owner: context.repo.owner,
+
                 repo: context.repo.repo,
+
                 issue_number: pr.number,
+
                 body: "🚫 This pull request has merge conflicts and will be closed automatically. Please resolve conflicts and open a new PR.",
+
               });
  
               await github.rest.pulls.update({
+
                 owner: context.repo.owner,
+
                 repo: context.repo.repo,
+
                 pull_number: pr.number,
+
                 state: 'closed',
+
               });
+
             } else if (prDetails.mergeable === null) {
+
               console.log("Mergeable state is unknown. GitHub is still calculating. Try again.");
+
               throw new Error("Mergeable state is unknown. Please try again.");
+
             } else {
+
               console.log(`✅ PR #${pr.number} is mergeable.`);
+
             }
+ 
