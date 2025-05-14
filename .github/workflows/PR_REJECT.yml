@@ -1,4 +1,3 @@
-
 # .github/workflows/reject-conflicting-pr.yml
 name: Reject PRs with Merge Conflicts
 
