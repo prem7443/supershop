@@ -1,41 +1,18 @@
-name: Reject PRs with Merge Conflicts
+- name: Checkout PR
+  uses: actions/checkout@v3
+  with:
+    ref: ${{ github.head_ref }}
 
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]  # Trigger on PR opened, synchronized, or reopened
+- name: Check merge conflicts via GitHub API
+  run: |
+    git fetch origin ${{ github.event.pull_request.base.ref }}
+    if ! git merge-base --is-ancestor origin/${{ github.event.pull_request.base.ref }} HEAD; then
+      echo "PR has conflicts"
+      gh pr close "${{ github.event.pull_request.number }}" \
+        --comment "🚫 This pull request has merge conflicts with `${{ github.event.pull_request.base.ref }}`. Please rebase and resolve conflicts before creating a new PR."
+    else
+      echo "No conflicts"
+    fi
+  env:
+    GH_TOKEN: ${{ secrets.PR_REJECTION_TOKEN }}
 
-jobs:
-  reject-conflict-pr:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout PR
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.head_ref }}
-
-      - name: Display GitHub Context
-        run: |
-          echo "Event: ${{ github.event_name }}"
-          echo "PR number: ${{ github.event.pull_request.number }}"
-          echo "Base ref: ${{ github.event.pull_request.base.ref }}"
-          echo "Head ref: ${{ github.event.pull_request.head.ref }}"
-
-      - name: Install GitHub CLI
-        run: |
-          curl -fsSL https://cli.github.com/packages/release.gpg | gpg --dearmor -o /usr/share/keyrings/github-archive-keyring.gpg
-          sudo apt update
-          sudo apt install gh
-
-      - name: Check merge conflicts via GitHub API
-        run: |
-          conflict_check=$(gh pr view "${{ github.event.pull_request.number }}" --json mergeable --jq '.mergeable')
-          echo "Mergeable status: $conflict_check"
-          if [ "$conflict_check" != "TRUE" ]; then
-            echo "PR has conflicts"
-            gh pr close "${{ github.event.pull_request.number }}" \
-              --comment "This pull request has merge conflicts. Please resolve them before reopening."
-          else
-            echo "No conflicts"
-        env:
-           GH_TOKEN: ${{ secrets.PR_REJECTION_TOKEN }}
- 
