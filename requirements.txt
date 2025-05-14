@@ -2,4 +2,4 @@ Django==4.1
 razorpay==1.4.2  # or the version you need
 gunicorn==20.1.0  # For production (optional)
 django-environ==0.4.5  # For environment variable management (optional)
-psycopg2-binary==2.9.3  # For PostgreSQL database (if you're using PostgreSQL)
+psycopg2-binary==2.9.3  # For PostgreSQL database
