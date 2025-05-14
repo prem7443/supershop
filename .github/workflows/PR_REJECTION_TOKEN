@@ -33,7 +33,7 @@ jobs:
           if [ "$conflict_check" != "TRUE" ]; then
             echo "PR has conflicts"
             gh pr close "${{ github.event.pull_request.number }}" \
-              --comment "🚫 This pull request has merge conflicts. Please resolve them before reopening."
+              --comment "This pull request has merge conflicts. Please resolve them before reopening."
           else
             echo "No conflicts"
         env:
