@@ -1,9 +1,7 @@
 name: Deploy to ECS with Terraform
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
