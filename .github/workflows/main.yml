@@ -3,38 +3,40 @@ name: Deploy to ECS with Terraform
 on:
   push:
     branches:
-      - main   # or your deployment branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-    - name: Build Docker image
-      run: |
-        docker build -t 354912177173.dkr.ecr.us-east-1.amazonaws.com/354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }} .
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 | \
+          docker login --username AWS --password-stdin 354912177173.dkr.ecr.us-east-1.amazonaws.com
 
-    - name: Login to Amazon ECR
-      run: |
-        aws ecr get-login-password --region ap-south-1 | \
-        docker login --username AWS --password-stdin 354912177173.dkr.ecr.us-east-1.amazonaws.com
+      - name: Build Docker image
+        run: |
+          docker build -t 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }} .
 
-    - name: Push Docker image to ECR
-      run: |
-        docker push 354912177173.dkr.ecr.us-east-1.amazonaws.com/354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }}
+      - name: Push Docker image to ECR
+        run: |
+          docker push 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }}
 
-    - name: Terraform Init & Apply
-      working-directory: ./terraform
-      run: |
-        terraform init
-        terraform apply -auto-approve -var="image_tag=${{ github.run_number }}" -var="ecr_repo_url=354912177173.dkr.ecr.us-east-1.amazonaws.com/354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1"
+      - name: Terraform Init & Apply
+        working-directory: ./terraform
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+            -var="image_tag=${{ github.run_number }}" \
+            -var="ecr_repo_url=354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1"
