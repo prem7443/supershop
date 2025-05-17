@@ -1,7 +1,14 @@
 name: Deploy to ECS with Terraform
 
 on:
-  workflow_dispatch:  # manual trigger
+  workflow_dispatch:  # Manual trigger
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 354912177173.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: repo1
+  IMAGE_TAG: ${{ github.run_number }}
+  IMAGE_URI: 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }}
 
 jobs:
   deploy:
@@ -16,26 +23,27 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         run: |
-          aws ecr get-login-password --region us-east-1 | \
-          docker login --username AWS --password-stdin 354912177173.dkr.ecr.us-east-1.amazonaws.com
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS --password-stdin $ECR_REGISTRY
 
       - name: Build Docker image
         run: |
-          docker build -t 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:6 -f Dockerfile .
+         docker build -t 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:9 .
 
 
       - name: Push Docker image to ECR
         run: |
-          docker push 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }}
+          docker push 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:9
+
 
       - name: Terraform Init & Apply
         working-directory: ./terraform
         run: |
           terraform init
           terraform apply -auto-approve \
-            -var="image_tag=${{ github.run_number }}" \
-            -var="ecr_repo_url=354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1"
+            -var="image_tag=${IMAGE_TAG}" \
+            -var="ecr_repo_url=${ECR_REGISTRY}/${ECR_REPOSITORY}"
