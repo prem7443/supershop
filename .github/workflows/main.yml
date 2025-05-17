@@ -1,7 +1,16 @@
-name: Deploy to ECS with Terraform
+name: Deploy or Destroy ECS with Terraform
 
 on:
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - destroy
 
 env:
   AWS_REGION: us-east-1
@@ -11,7 +20,7 @@ env:
   IMAGE_URI: 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }}
 
 jobs:
-  deploy:
+  deploy_or_destroy:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,27 +35,38 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
+        if: ${{ github.event.inputs.action == 'deploy' }}
         run: |
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $ECR_REGISTRY
 
       - name: Build Docker image
+        if: ${{ github.event.inputs.action == 'deploy' }}
         run: |
-         docker build -t 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:9 .
-
+          docker build -t $IMAGE_URI .
 
       - name: Push Docker image to ECR
+        if: ${{ github.event.inputs.action == 'deploy' }}
         run: |
-          docker push 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:9
-
+          docker push $IMAGE_URI
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
-    
-      - name: Terraform Init & Apply
+
+      - name: Terraform Init
+        working-directory: ./terraform/ECS
+        run: terraform init
+
+      - name: Terraform Apply (Deploy)
+        if: ${{ github.event.inputs.action == 'deploy' }}
         working-directory: ./terraform/ECS
         run: |
-          terraform init
           terraform apply -auto-approve \
-            -var="image=354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }}"
+            -var="image=${{ env.IMAGE_URI }}"
 
+      - name: Terraform Destroy
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        working-directory: ./terraform/ECS
+        run: |
+          terraform destroy -auto-approve \
+            -var="image=${{ env.IMAGE_URI }}"
