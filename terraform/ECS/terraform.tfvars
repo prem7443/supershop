@@ -14,7 +14,7 @@ health_check_grace_period_seconds = 60                  # Grace period for ECS s
 api_stage                 = "dev"
 task_cpu                  =   256
 task_memory               = 512  
-secret_name         = "sec11"                        
+secret_name         = "sec11356"                        
 razorpay_key_id     = "rzp_test_kJFCr5jnzPYy9s"
 razorpay_key_secret = "cFR0T4bhyI16Xb06fFytJmAu"
 
