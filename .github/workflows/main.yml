@@ -40,10 +40,14 @@ jobs:
           docker push 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:9
 
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+    
       - name: Terraform Init & Apply
-        working-directory: ./terraform
+        working-directory: ./terraform/ECS
         run: |
           terraform init
           terraform apply -auto-approve \
-            -var="image_tag=${IMAGE_TAG}" \
-            -var="ecr_repo_url=${ECR_REGISTRY}/${ECR_REPOSITORY}"
+            -var="image_tag=${{ github.run_number }}" \
+            -var="ecr_repo_url=354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1"
+
