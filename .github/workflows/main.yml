@@ -1,4 +1,4 @@
-name: Deploy to ECS with Terraform
+name: Deploy to ECS
 
 on:
   push:
@@ -7,7 +7,16 @@ on:
 
 jobs:
   deploy:
+    name: Build and Deploy to ECS
     runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      CLUSTER_NAME: cl
+      SERVICE_NAME: my-ecs-service
+      ECR_REPO: repo1
+      CONTAINER_NAME: my-container
+      IMAGE_TAG: latest
 
     steps:
       - name: Checkout code
@@ -18,25 +27,53 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        run: |
-          aws ecr get-login-password --region us-east-1 | \
-          docker login --username AWS --password-stdin 354912177173.dkr.ecr.us-east-1.amazonaws.com
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build Docker image
+      - name: Build, tag, and push image
         run: |
-          docker build -t 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }} .
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ env.IMAGE_TAG }}
+          docker build -t $IMAGE_URI .
+          docker push $IMAGE_URI
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-      - name: Push Docker image to ECR
+      - name: Get current task definition
+        id: task-def
         run: |
-          docker push 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }}
+          aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME \
+            --query "services[0].taskDefinition" --output text > task_def_arn.txt
+          aws ecs describe-task-definition --task-definition $(cat task_def_arn.txt) > task_def.json
 
-      - name: Terraform Init & Apply
-        working-directory: ./terraform
+      - name: Create new task definition with new image
+        id: new-task-def
         run: |
-          terraform init
-          terraform apply -auto-approve \
-            -var="image_tag=${{ github.run_number }}" \
-            -var="ecr_repo_url=354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1"
+          NEW_TASK_DEF=$(jq \
+            --arg IMAGE "$IMAGE_URI" \
+            --arg NAME "$CONTAINER_NAME" \
+            '.taskDefinition.containerDefinitions |= map(if .name == $NAME then .image = $IMAGE else . end) |
+             {
+               family: .taskDefinition.family,
+               networkMode: .taskDefinition.networkMode,
+               containerDefinitions: .taskDefinition.containerDefinitions,
+               requiresCompatibilities: .taskDefinition.requiresCompatibilities,
+               cpu: .taskDefinition.cpu,
+               memory: .taskDefinition.memory,
+               executionRoleArn: .taskDefinition.executionRoleArn,
+               taskRoleArn: .taskDefinition.taskRoleArn
+             }' task_def.json)
+
+          echo "$NEW_TASK_DEF" > new_task_def.json
+          aws ecs register-task-definition --cli-input-json file://new_task_def.json > new_task_def_response.json
+          NEW_TASK_DEF_ARN=$(jq -r '.taskDefinition.taskDefinitionArn' new_task_def_response.json)
+          echo "NEW_TASK_DEF_ARN=$NEW_TASK_DEF_ARN" >> $GITHUB_ENV
+
+      - name: Deploy new task definition
+        run: |
+          aws ecs update-service \
+            --cluster $CLUSTER_NAME \
+            --service $SERVICE_NAME \
+            --task-definition $NEW_TASK_DEF_ARN \
+            --force-new-deployment
