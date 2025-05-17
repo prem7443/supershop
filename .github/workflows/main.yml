@@ -25,7 +25,8 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }} .
+          docker build -t 3549....ecr.us-east-1.amazonaws.com/repo1:${{ github.run_number }} -f dockerfile .
+
 
       - name: Push Docker image to ECR
         run: |
