@@ -1,18 +1,16 @@
 FROM python:3.9-slim-buster
 
-LABEL Name="Python Django Demo App" Version=1.0.0
-LABEL org.opencontainers.image.source="https://github.com/benc-uk/python-demoapp"
-
 WORKDIR /app
 
-# Install dependencies
-COPY src/requirements.txt .
+# Copy and install requirements
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy Django application files
-COPY src/manage.py .
-COPY src/app ./app
+# Copy Django app files
+COPY manage.py .
+COPY mainApp ./mainApp
+COPY supershop ./supershop
 
 EXPOSE 8000
 
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "app.wsgi:application"]
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "supershop.wsgi:application"]
