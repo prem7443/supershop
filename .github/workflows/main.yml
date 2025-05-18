@@ -5,7 +5,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPO: repo2 # ECR repo name (without account number)
+  ECR_REPO: repo2  # ECR repo name (without account number)
   TERRAFORM_DIR: ./terraform/ecs  # Path to your Terraform code
 
 jobs:
