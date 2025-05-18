@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  web:
+    image: 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo2  # Replace with your actual Docker image
+    build:
+      context: .
+      dockerfile: Dockerfile  # Adjust if your Dockerfile is in a different location
+    ports:
+      - "8000:8000"  # Expose port 8000 on your host to port 8000 on the container
+    volumes:
+      - ./db.sqlite3:/app/db.sqlite3  # Mount the local SQLite database to the container
+      - ./static:/app/static  # Mount the static files directory for your app
+      - ./media:/app/media  # Mount the media files directory if you use media files
+    environment:
+      - DEBUG=True  # Make sure to set this as per your settings in Django
+    command: python manage.py runserver 0.0.0.0:8000  # Run the Django development server
+
+  #a
+
+volumes:
+  # Optional: You can define persistent storage for SQLite if required (to persist db.sqlite3)
+  # postgres-data:
