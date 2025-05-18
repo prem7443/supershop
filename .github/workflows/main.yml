@@ -1,19 +1,25 @@
 name: Deploy Django App to ECS
 
 on:
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+  push:
+    branches:
+      - main  # or your deployment branch
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPO: repo2  # ECR repo name (without account number)
-  TERRAFORM_DIR: ./terraform/ECS  # Path to your Terraform code
+  ECR_REPO: repo2
+  CLUSTER_NAME: cl
+  SERVICE_NAME: my-ecs-service 
+  TASK_DEF_TEMPLATE: taskdef.json  # A JSON template you'll maintain
+  TASK_DEF_FAMILY: my-task:39
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
@@ -30,22 +36,25 @@ jobs:
         id: tag
         run: echo "tag=v$(date +%s)" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image to ECR
+      - name: Build and Push Docker Image
         run: |
           IMAGE_URI="354912177173.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${{ steps.tag.outputs.tag }}"
-          echo "IMAGE_URI=$IMAGE_URI"  # Debug the IMAGE_URI
-          docker build -t "$IMAGE_URI" .  # Build the image with the generated URI
-          docker push "$IMAGE_URI"  # Push the image to ECR
+          echo "IMAGE_URI=$IMAGE_URI"
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Create new ECS task definition
+        run: |
+          sed "s|<IMAGE_URI>|$IMAGE_URI|g" $TASK_DEF_TEMPLATE > new-taskdef.json
+          aws ecs register-task-definition \
+            --cli-input-json file://new-taskdef.json
 
-      - name: Terraform Init
-        working-directory: ${{ env.TERRAFORM_DIR }}
-        run: terraform init
-
-      - name: Terraform Apply (update ECS task)
-        working-directory: ${{ env.TERRAFORM_DIR }}
-        env:
-          TF_VAR_image_tag: ${{ steps.tag.outputs.tag }}
-        run: terraform apply -auto-approve
+      - name: Update ECS service
+        run: |
+          NEW_TASK_DEF=$(aws ecs describe-task-definition --task-definition $TASK_DEF_FAMILY --query "taskDefinition.taskDefinitionArn" --output text)
+          aws ecs update-service \
+            --cluster $CLUSTER_NAME \
+            --service $SERVICE_NAME \
+            --task-definition $NEW_TASK_DEF \
+            --force-new-deployment
