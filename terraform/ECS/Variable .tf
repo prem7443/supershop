@@ -131,3 +131,23 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "ecs_cluster_name" {
+  description = "Name of the ECS cluster"
+  type        = string
+}
+
+variable "service_name" {
+  description = "Name of the ECS service"
+  type        = string
+}
+
+variable "container_name" {
+  description = "Name of the container in ECS"
+  type        = string
+}
+
+variable "image_url" {
+  description = "URL of the Docker image in ECR"
+  type        = string
+}
