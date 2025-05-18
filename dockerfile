@@ -1,27 +1,29 @@
-FROM python:3.9-slim-buster
+FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
+# Set working directory
 WORKDIR /app
 
-# Add system dependencies for pip packages
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libffi-dev \
-    libssl-dev \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
+# Install dependencies
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Show full error if pip install fails
-RUN pip install --no-cache-dir -r requirements.txt || (echo "❌ Failed pip install" && cat requirements.txt)
-
+# Copy Django project files
 COPY manage.py .
 COPY mainApp ./mainApp
 COPY supershop ./supershop
 
+# For static files (if needed)
+RUN mkdir -p /app/static
+
+# Expose the port Django will run on
 EXPOSE 8000
 
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "supershop.wsgi:application"]
+# Run development server (for production use gunicorn instead)
+#CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
+# ✅ Run migrations and then start the server
+CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
