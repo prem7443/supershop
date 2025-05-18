@@ -1,52 +1,51 @@
-name: Manual Deploy to ECS with Terraform
+name: Deploy Django App to ECS
 
 on:
-  workflow_dispatch:  # Manual trigger only
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
 
 env:
   AWS_REGION: us-east-1
-  ECR_REGISTRY: 354912177173.dkr.ecr.us-east-1.amazonaws.com
-  ECR_REPOSITORY: repo1
-  IMAGE_TAG: ${{ github.run_number }}
-  IMAGE_URI: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.run_number }}
+  ECR_REPO: 354912177173.dkr.ecr.us-east-1.amazonaws.com/repo2
+  TERRAFORM_DIR: ./terraform/ecs  # Path to your Terraform code
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        run: |
-          aws ecr get-login-password --region $AWS_REGION | \
-          docker login --username AWS --password-stdin $ECR_REGISTRY
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker image
-        run: |
-          docker build -t $IMAGE_URI .
+      - name: Generate image tag
+        id: tag
+        run: echo "tag=v$(date +%s)" >> $GITHUB_OUTPUT
 
-      - name: Push Docker image to ECR
+      - name: Build and push Docker image to ECR
         run: |
-          docker push $IMAGE_URI
+          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${{ steps.tag.outputs.tag }}"
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        working-directory: ./terraform/ECS
+        working-directory: ${{ env.TERRAFORM_DIR }}
         run: terraform init
 
-      - name: Terraform Apply (Deploy)
-        working-directory: ./terraform/ECS
-        run: |
-          terraform apply -auto-approve \
-            -var="image=${{ env.IMAGE_URI }}"
+      - name: Terraform Apply (update ECS task)
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        env:
+          TF_VAR_image_tag: ${{ steps.tag.outputs.tag }}
+        run: terraform apply -auto-approve
