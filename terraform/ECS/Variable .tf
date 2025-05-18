@@ -100,7 +100,7 @@ variable "task_memory" {
 variable "secret_name" {
   description = "Name of the AWS Secrets Manager secret"
   type        = string
-  default     = "sec11"
+  default     = "sec12"
 }
 
 variable "razorpay_key_id" {
@@ -116,3 +116,18 @@ variable "razorpay_key_secret" {
 }
 
 
+variable "db_name" {
+  description = "The name of the database"
+  type        = string
+}
+
+variable "db_user" {
+  description = "The database user"
+  type        = string
+}
+
+variable "db_password" {
+  description = "The database password"
+  type        = string
+  sensitive   = true
+}
