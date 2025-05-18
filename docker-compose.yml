@@ -14,7 +14,7 @@ services:
       - ./media:/app/media  # Mount the media files directory if you use media files
     environment:
       - DEBUG=True  # Make sure to set this as per your settings in Django
-    command: python manage.py runserver 0.0.0.0:8000  # Run the Django development server
+    command: python manage.py runserver 127.0.0.1:8000  # Run the Django development server
 
   #a
 
