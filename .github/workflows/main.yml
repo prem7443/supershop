@@ -3,7 +3,7 @@ name: Deploy Django App to ECS
 on:
   push:
     branches:
-      - main  # or your deployment branch
+      - main
   workflow_dispatch:
 
 env:
@@ -11,8 +11,8 @@ env:
   ECR_REPO: repo2
   CLUSTER_NAME: cl
   SERVICE_NAME: my-ecs-service 
-  TASK_DEF_TEMPLATE: taskdef.json  # A JSON template you'll maintain
-  TASK_DEF_FAMILY: my-task:39
+  TASK_DEF_TEMPLATE: taskdef.json
+  TASK_DEF_FAMILY: my-task  # ✅ Removed ":39"
 
 jobs:
   deploy:
