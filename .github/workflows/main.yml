@@ -32,7 +32,7 @@ jobs:
 
       - name: Build and push Docker image to ECR
         run: |
-          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${{ steps.tag.outputs.tag }}"
+          IMAGE_URI="354912177173.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${{ steps.tag.outputs.tag }}"
           echo "IMAGE_URI=$IMAGE_URI"  # Debug the IMAGE_URI
           docker build -t "$IMAGE_URI" .  # Build the image with the generated URI
           docker push "$IMAGE_URI"  # Push the image to ECR
