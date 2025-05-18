@@ -311,9 +311,7 @@ resource "aws_api_gateway_method_response" "my_method_response" {
   status_code = "200"
 }
 
-variable "db_name" {}
-variable "db_user" {}
-variable "db_password" {}
+
 
 resource "aws_ssm_parameter" "db_password" {
   name  = "/myapp/db/password"
