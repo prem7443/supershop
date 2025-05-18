@@ -12,23 +12,19 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy Django project files
-COPY manage.py .
+COPY manage.py ./
 COPY mainApp ./mainApp
 COPY supershop ./supershop
 
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-ENTRYPOINT ["/app/entrypoint.sh"]
-
-
-# For static files (if needed)
+# For static files (optional)
 RUN mkdir -p /app/static
 
-# Expose the port Django will run on
+# Copy and enable entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Set entrypoint (runs migrate + starts server)
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Expose port
 EXPOSE 8000
-
-# Run development server (for production use gunicorn instead)
-#CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-
-# ✅ Run migrations and then start the server
-CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
