@@ -16,6 +16,11 @@ COPY manage.py .
 COPY mainApp ./mainApp
 COPY supershop ./supershop
 
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+
 # For static files (if needed)
 RUN mkdir -p /app/static
 
