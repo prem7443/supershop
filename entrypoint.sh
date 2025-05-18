@@ -1,10 +1,18 @@
-#!/bin/sh
+#!/bin/bash
 
-echo "📦 Running database migrations..."
-python manage.py migrate --noinput
+# Exit on any error
+set -e
 
-echo "📁 Collecting static files..."
+# Collect static files
+echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
-echo "🚀 Starting Gunicorn server..."
-exec gunicorn supershop.wsgi:application --bind 0.0.0.0:8000
+# Apply database migrations
+echo "Applying database migrations..."
+python manage.py migrate
+
+# Start Gunicorn
+echo "Starting Gunicorn..."
+exec gunicorn your_project_name.wsgi:application \
+    --bind 0.0.0.0:8000 \
+    --workers 3
