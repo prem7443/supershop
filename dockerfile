@@ -15,7 +15,7 @@ COPY . .
 
 
 # This will place static files into the STATIC_ROOT directory you set in settings.py
-RUN python manage.py collectstatic --noinput
+#RUN python manage.py collectstatic --noinput
 
 # Expose port 8000 to the outside world (or any other port you want Django to run on)
 EXPOSE 8000
