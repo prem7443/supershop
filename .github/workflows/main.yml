@@ -8,11 +8,11 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPO: repo2
+  ECR_REPO: repo1
   CLUSTER_NAME: cl
   SERVICE_NAME: my-ecs-service 
   TASK_DEF_TEMPLATE: taskdef.json
-  TASK_DEF_FAMILY: my-task  # ✅ Removed ":39"
+  TASK_DEF_FAMILY: my-task  # 
 
 jobs:
   deploy:
