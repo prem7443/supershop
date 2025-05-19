@@ -1,60 +1,54 @@
-name: Deploy Django App to ECS
+name: Manual Deploy to ECS
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 env:
   AWS_REGION: us-east-1
   ECR_REPO: repo1
-  CLUSTER_NAME: cl
-  SERVICE_NAME: my-ecs-service 
-  TASK_DEF_TEMPLATE: taskdef.json
-  TASK_DEF_FAMILY: my-task  # 
+  ECS_CLUSTER: cl
+  ECS_SERVICE: my-ecs-service
+  CONTAINER_NAME: my-container
 
 jobs:
   deploy:
+    name: Build, Push, and Deploy
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
 
-      - name: Log in to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+    - name: Log in to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Generate image tag
-        id: tag
-        run: echo "tag=v$(date +%s)" >> $GITHUB_OUTPUT
+    - name: Build Docker image
+      run: |
+        IMAGE_TAG=latest
+        docker build -t $ECR_REPO:$IMAGE_TAG .
 
-      - name: Build and Push Docker Image
-        run: |
-          IMAGE_URI="354912177173.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${{ steps.tag.outputs.tag }}"
-          echo "IMAGE_URI=$IMAGE_URI"
-          docker build -t "$IMAGE_URI" .
-          docker push "$IMAGE_URI"
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+    - name: Tag Docker image for ECR
+      run: |
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        IMAGE_URI=$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:latest
+        docker tag $ECR_REPO:latest $IMAGE_URI
+        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-      - name: Create new ECS task definition
-        run: |
-          sed "s|<IMAGE_URI>|$IMAGE_URI|g" $TASK_DEF_TEMPLATE > new-taskdef.json
-          aws ecs register-task-definition \
-            --cli-input-json file://new-taskdef.json
+    - name: Push image to ECR
+      run: |
+        docker push $IMAGE_URI
 
-      - name: Update ECS service
-        run: |
-          NEW_TASK_DEF=$(aws ecs describe-task-definition --task-definition $TASK_DEF_FAMILY --query "taskDefinition.taskDefinitionArn" --output text)
-          aws ecs update-service \
-            --cluster $CLUSTER_NAME \
-            --service $SERVICE_NAME \
-            --task-definition $NEW_TASK_DEF \
-            --force-new-deployment
+    - name: Update ECS service
+      run: |
+        aws ecs update-service \
+          --cluster $ECS_CLUSTER \
+          --service $ECS_SERVICE \
+          --force-new-deployment
