@@ -42,22 +42,24 @@ jobs:
 
       - name: Build Docker image
         run: |
-          IMAGE_TAG=${{ github.event.inputs.image_tag }}
+          IMAGE_TAG="${{ github.event.inputs.image_tag }}"
           docker build -t $ECR_REPO:$IMAGE_TAG .
 
       - name: Tag Docker image for ECR
         run: |
+          IMAGE_TAG="${{ github.event.inputs.image_tag }}"
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          IMAGE_URI=$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:${{ github.event.inputs.image_tag }}
-          docker tag $ECR_REPO:${{ github.event.inputs.image_tag }} $IMAGE_URI
+          IMAGE_URI="$ACCOUNT_ID.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
+          docker tag $ECR_REPO:$IMAGE_TAG $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Push image to ECR
-        run: docker push $IMAGE_URI
+        run: |
+          docker push $IMAGE_URI
 
       - name: Update ECS service
         run: |
-          echo "Updating ECS service in cluster $ECS_CLUSTER with image $IMAGE_URI"
+          echo "Updating ECS service with image $IMAGE_URI"
           aws ecs update-service \
             --cluster $ECS_CLUSTER \
             --service $ECS_SERVICE \
