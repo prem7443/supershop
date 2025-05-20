@@ -34,25 +34,62 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Confirm AWS credentials
+        run: |
+          if aws sts get-caller-identity > /dev/null 2>&1; then
+            echo "AWS credentials configured successfully"
+          else
+            echo "Failed to configure AWS credentials"
+            exit 1
+          fi
+
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Confirm ECR login
+        run: |
+          if docker info > /dev/null 2>&1; then
+            echo "✅ Logged in to Amazon ECR successfully"
+          else
+            echo "Failed to log in to ECR"
+            exit 1
+          fi
 
       - name: Build Docker image
         run: |
           IMAGE_TAG=${{ github.event.inputs.image_tag }}
-          docker build -t $ECR_REPO:$IMAGE_TAG .
+          if docker build -t $ECR_REPO:$IMAGE_TAG .; then
+            echo "Docker image built successfully with tag: $IMAGE_TAG"
+          else
+            echo "Failed to build Docker image"
+            exit 1
+          fi
+
       - name: Tag Docker image for ECR
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           IMAGE_URI=$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:${{ github.event.inputs.image_tag }}
           docker tag $ECR_REPO:${{ github.event.inputs.image_tag }} $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          echo "Docker image tagged as $IMAGE_URI"
+
       - name: Push image to ECR
         run: |
-          docker push $IMAGE_URI
+          if docker push $IMAGE_URI; then
+            echo "Docker image pushed to ECR successfully"
+          else
+            echo "Failed to push Docker image to ECR"
+            exit 1
+          fi
+
       - name: Update ECS service
         run: |
-          aws ecs update-service \
+          if aws ecs update-service \
             --cluster $ECS_CLUSTER \
             --service $ECS_SERVICE \
-            --force-new-deployment
+            --force-new-deployment; then
+            echo "ECS service updated successfully"
+          else
+            echo "Failed to update ECS service"
+            exit 1
+          fi
