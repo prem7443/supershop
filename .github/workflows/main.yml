@@ -50,8 +50,8 @@ jobs:
           IMAGE_TAG="${{ github.event.inputs.image_tag }}"
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           IMAGE_URI="$ACCOUNT_ID.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
-          docker tag $ECR_REPO:$IMAGE_TAG $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          docker tag $ECR_REPO:$IMAGE_TAG $IMAGE_URI
 
       - name: Push image to ECR
         run: |
