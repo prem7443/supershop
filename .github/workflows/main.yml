@@ -4,12 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy (e.g. Dev, Alpha)'
+        description: 'Environment to deploy to (e.g. staging, production)'
         required: true
-        type: choice
-        options: 
-          - Dev
-          - Alpha
+        default: 'staging'
       image_tag:
         description: 'Docker image tag'
         required: false
@@ -30,6 +27,7 @@ jobs:
         run: |
           echo "Deploying to environment: ${{ github.event.inputs.environment }}"
 
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -40,23 +38,25 @@ jobs:
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and tag Docker image
+      - name: Build Docker image
         run: |
-          IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          IMAGE_TAG=${{ github.event.inputs.image_tag }}
+          docker build -t $ECR_REPO:$IMAGE_TAG .
+
+      - name: Tag Docker image for ECR
+        run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          IMAGE_URI="$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:$IMAGE_TAG"
-          docker build -t $IMAGE_URI .
+          IMAGE_URI=$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:${{ github.event.inputs.image_tag }}
+          docker tag $ECR_REPO:${{ github.event.inputs.image_tag }} $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Push image to ECR
-        run: |
-          docker push $IMAGE_URI
+        run: docker push $IMAGE_URI
 
       - name: Update ECS service
         run: |
-          echo "Updating ECS service with image $IMAGE_URI"
+          echo "Updating ECS service in cluster $ECS_CLUSTER with image $IMAGE_URI"
           aws ecs update-service \
-            --cluster ${{ env.ECS_CLUSTER }} \
-            --service ${{ env.ECS_SERVICE }} \
-            --force-new-deployment \
-            --region ${{ env.AWS_REGION }}
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --force-new-deployment
