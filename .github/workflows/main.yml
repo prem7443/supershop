@@ -4,9 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy to (e.g. staging, production)'
+        description: 'Environment to deploy (e.g. Dev, Alpha)'
         required: true
-        default: 'staging'
+        type: choice
+        options: 
+          - Dev
+          - Alpha
       image_tag:
         description: 'Docker image tag'
         required: false
@@ -27,7 +30,6 @@ jobs:
         run: |
           echo "Deploying to environment: ${{ github.event.inputs.environment }}"
 
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -38,7 +40,7 @@ jobs:
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker image
+      - name: Build and tag Docker image
         run: |
           IMAGE_TAG="${{ github.event.inputs.image_tag }}"
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -48,11 +50,11 @@ jobs:
 
       - name: Push image to ECR
         run: |
-          docker push ${{ env.IMAGE_URI }}
+          docker push $IMAGE_URI
 
       - name: Update ECS service
         run: |
-          echo "Updating ECS service with image ${{ env.IMAGE_URI }}"
+          echo "Updating ECS service with image $IMAGE_URI"
           aws ecs update-service \
             --cluster ${{ env.ECS_CLUSTER }} \
             --service ${{ env.ECS_SERVICE }} \
