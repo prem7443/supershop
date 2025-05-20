@@ -21,7 +21,7 @@ env:
 
 jobs:
   deploy:
-    if: contains(fromJson('["prem7443]'), github.actor)
+    if: contains(fromJson('["prem"]'), github.actor)
     runs-on: ubuntu-latest
 
     steps:
