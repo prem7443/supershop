@@ -21,10 +21,18 @@ env:
 
 jobs:
   deploy:
-    if: contains(fromJson('["prem7443"]'), github.actor)
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check if actor is allowed
+        run: |
+          echo "ALLOWED_USERS=${{ secrets.ALLOWED_USERS }}"
+          if ! echo "${{ secrets.ALLOWED_USERS }}" | grep -qw "${{ github.actor }}"; then
+            echo "User ${{ github.actor }} is not authorized to deploy."
+            exit 1
+          fi
+        shell: bash
+
       - name: Checkout code
         uses: actions/checkout@v4
 
