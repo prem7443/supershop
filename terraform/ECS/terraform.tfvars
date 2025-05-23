@@ -15,12 +15,12 @@ api_stage                 = "dev"
 task_cpu                  =   256
 task_memory               = 512  
 secret_name         = "sec118899"                        
-razorpay_key_id     = "rzp_test_kJFCr5jnzPYy9s"
-razorpay_key_secret = "cFR0T4bhyI16Xb06fFytJmAu"
+razorpay_key_id     = "hgfvhjhhj"
+razorpay_key_secret = "chffhkftf"
 
 db_name     = "mydatabase"
-db_user     = "sprem"
-db_password = "Prem@123"
+db_user     = "dkfyf"
+db_password = "bvgfcnhg"
 
 
 
