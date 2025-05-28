@@ -1,9 +1,9 @@
 name: Close PRs with Merge Conflicts
 
 on:
-  pull_request:
+  push:
     types: [opened, synchronize, reopened]
-  workflow_dispatch:  
+  #workflow_dispatch:  
 
 jobs:
   check_merge_conflicts:
