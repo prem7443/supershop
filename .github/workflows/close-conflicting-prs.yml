@@ -1,75 +1,45 @@
-# .github/workflows/close-conflicting-prs.yml
-
-name: Close PRs with Merge Conflicts
+name: Auto-close PRs with merge conflicts
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  check_merge_conflicts:
+  close-conflicting-prs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check if PR has merge conflicts
+      - name: Check PR merge conflicts and close if any
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
 
-            const getPRDetails = async () => {
-              const { data: prDetails } = await github.rest.pulls.get({
+            async function getPR() {
+              const { data } = await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: pr.number,
               });
-              return prDetails;
-            };
+              return data;
+            }
 
-            let prDetails = await getPRDetails();
+            let prDetails = await getPR();
 
-            // Retry up to 3 times if mergeable is null (GitHub still calculating)
+            // Retry if mergeable is null (GitHub calculating)
             let retries = 3;
             while (prDetails.mergeable === null && retries > 0) {
-              console.log("Mergeable state is null. Retrying in 10 seconds...");
-              await new Promise(resolve => setTimeout(resolve, 10000));
-              prDetails = await getPRDetails();
+              console.log('Waiting for mergeable status...');
+              await new Promise(r => setTimeout(r, 10000));
+              prDetails = await getPR();
               retries--;
             }
 
-            if (prDetails.mergeable === null) {
-              throw new Error("Unable to determine mergeable status after retries.");
-            }
-
             if (prDetails.mergeable === false) {
-              console.log(`PR #${pr.number} has merge conflicts. Labeling and closing...`);
+              console.log(`PR #${pr.number} has merge conflicts. Closing now.`);
 
-              // Add label 'merge-conflict' (make sure label exists in repo)
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                labels: ['merge-conflict'],
-              });
-
-              // Assign PR author
-              await github.rest.issues.addAssignees({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                assignees: [pr.user.login],
-              });
-
-              // Comment on PR
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                body: "This pull request has merge conflicts and will be closed automatically. Please resolve the conflicts and open a new PR.",
-              });
-
-              // Close the PR
+              // Close PR
               await github.rest.pulls.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -77,6 +47,14 @@ jobs:
                 state: 'closed',
               });
 
-            } else if (prDetails.mergeable === true) {
-              console.log(`PR #${pr.number} is mergeable.`);
+              // Optional: Comment on PR before closing
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: "This PR has merge conflicts and has been automatically closed. Please resolve the conflicts and open a new PR.",
+              });
+
+            } else {
+              console.log(`PR #${pr.number} is mergeable or status unknown. No action taken.`);
             }
