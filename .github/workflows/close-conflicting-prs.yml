@@ -3,10 +3,12 @@ name: Auto-Close PRs with Conflicts
 permissions:
   pull-requests: write
   contents: read
+  
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 jobs:
   close-conflicted-pr:
