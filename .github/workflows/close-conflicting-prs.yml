@@ -1,5 +1,8 @@
-
 name: Auto-Close PRs with Conflicts
+
+permissions:
+  pull-requests: write
+  contents: read
 
 on:
   pull_request:
@@ -10,14 +13,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check for merge conflicts
+      - name: Check for merge conflicts and close if any
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
             if (!pr) {
-              core.setFailed("No PR found in context.");
+              core.setFailed("No pull request found in context.");
               return;
             }
 
@@ -25,11 +28,11 @@ jobs:
             const repo = context.repo.repo;
             const pull_number = pr.number;
 
-            // Try up to 5 times to get mergeable state
             let attempts = 0;
             let mergeable = null;
 
-            while (mergeable === null && attempts < 5) {
+            // Retry up to 10 times with 5 seconds delay to get mergeable status
+            while (mergeable === null && attempts < 10) {
               const { data: prData } = await github.rest.pulls.get({
                 owner,
                 repo,
@@ -37,17 +40,19 @@ jobs:
               });
 
               mergeable = prData.mergeable;
+
               if (mergeable === null) {
-                console.log(`Attempt ${attempts + 1}: mergeable still null. Retrying...`);
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                console.log(`Attempt ${attempts + 1}: mergeable still null. Retrying in 5 seconds...`);
+                await new Promise(resolve => setTimeout(resolve, 5000));
               }
 
               attempts++;
             }
 
             if (mergeable === false) {
-              console.log(`❌ PR #${pull_number} has conflicts. Closing.`);
+              console.log(`❌ PR #${pull_number} has merge conflicts. Closing PR.`);
 
+              // Add a comment on the PR
               await github.rest.issues.createComment({
                 owner,
                 repo,
@@ -55,14 +60,21 @@ jobs:
                 body: "🚫 This pull request has merge conflicts and has been closed automatically. Please resolve the conflicts and open a new PR."
               });
 
-              await github.rest.pulls.update({
-                owner,
-                repo,
-                pull_number,
-                state: 'closed'
-              });
+              // Try to close the PR with error handling
+              try {
+                await github.rest.pulls.update({
+                  owner,
+                  repo,
+                  pull_number,
+                  state: 'closed'
+                });
+                console.log(`✅ Successfully closed PR #${pull_number}`);
+              } catch (error) {
+                core.setFailed(`Failed to close PR #${pull_number}: ${error.message}`);
+              }
+
             } else if (mergeable === true) {
-              console.log(`✅ PR #${pull_number} is clean and mergeable.`);
+              console.log(`✅ PR #${pull_number} is mergeable.`);
             } else {
-              console.log(`⚠️ Still couldn't determine mergeability for PR #${pull_number}.`);
+              console.log(`⚠️ Could not determine mergeable status for PR #${pull_number} after retries.`);
             }
