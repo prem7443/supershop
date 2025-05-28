@@ -1,3 +1,4 @@
+
 name: Auto-Close PRs with Conflicts
 
 on:
