@@ -12,7 +12,8 @@ jobs:
 
     steps:
       - name: Dump GitHub event type
-        run: echo "Event: ${{ github.event_name }}"
+        run: echo "${{ toJson(github.event) }}"
+
 
       - name: Dump GitHub event payload (for debugging)
         run: echo '${{ toJson(github.event) }}'
