@@ -17,7 +17,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
-
             const getPRDetails = async () => {
               const { data: prDetails } = await github.rest.pulls.get({
                 owner: context.repo.owner,
@@ -26,19 +25,15 @@ jobs:
               });
               return prDetails;
             };
-
             let prDetails = await getPRDetails();
-
             // Retry if mergeable state is null (GitHub still calculating)
             if (prDetails.mergeable === null) {
               console.log("Mergeable state is null. Retrying in 10 seconds...");
               await new Promise(resolve => setTimeout(resolve, 10000));
               prDetails = await getPRDetails();
             }
-
             if (prDetails.mergeable === false) {
               console.log(`PR #${pr.number} has merge conflicts. Labeling and closing...`);
-
               // Add label
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
@@ -46,7 +41,6 @@ jobs:
                 issue_number: pr.number,
                 labels: ['merge-conflict'],
               });
-
               // Assign PR author
               await github.rest.issues.addAssignees({
                 owner: context.repo.owner,
@@ -54,7 +48,6 @@ jobs:
                 issue_number: pr.number,
                 assignees: [pr.user.login],
               });
-
               // Comment on PR
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -62,7 +55,6 @@ jobs:
                 issue_number: pr.number,
                 body: "This pull request has merge conflicts and will be closed automatically. Please resolve the conflicts and open a new PR.",
               });
-
               // Close the PR
               await github.rest.pulls.update({
                 owner: context.repo.owner,
@@ -70,7 +62,6 @@ jobs:
                 pull_number: pr.number,
                 state: 'closed',
               });
-
             } else if (prDetails.mergeable === true) {
               console.log(`PR #${pr.number} is mergeable.`);
             } else {
