@@ -15,31 +15,35 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
+
+            console.log(`Checking PR #${pr.number}...`);
+
             let attempts = 0;
             let prDetails;
-            
-            // Retry up to 5 times with 2s delay
+
+            // Retry up to 5 times with delay, because 'mergeable' may be null initially
             while (attempts < 5) {
               prDetails = await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: pr.number,
               });
-              
+
               if (prDetails.data.mergeable !== null) break;
-              
-              console.log("Mergeable state is unknown. Waiting...");
-              await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2 sec
+
+              console.log("Mergeable state is null. Waiting...");
+              await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2s
               attempts++;
             }
 
             if (prDetails.data.mergeable === false) {
               console.log(`PR #${pr.number} has merge conflicts. Closing...`);
+
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: pr.number,
-                body: "This pull request has merge conflicts and will be closed automatically. Please resolve conflicts and open a new PR.",
+                body: "🚫 This pull request has merge conflicts and will be closed automatically. Please resolve them and create a new PR.",
               });
 
               await github.rest.pulls.update({
@@ -48,9 +52,8 @@ jobs:
                 pull_number: pr.number,
                 state: 'closed',
               });
-
-            } else if (prDetails.data.mergeable === null) {
-              throw new Error("Mergeable state is still unknown after retries. Please try again.");
+            } else if (prDetails.data.mergeable === true) {
+              console.log(`✅ PR #${pr.number} is mergeable.`);
             } else {
-              console.log(`PR #${pr.number} is mergeable.`);
+              console.log(`❓ PR #${pr.number}: mergeable state is still unknown.`);
             }
