@@ -1,82 +1,46 @@
-name: Auto-Close PRs with Conflicts
-
-permissions:
-  pull-requests: write
-  contents: read
-  
-
+# close-conflicting-prs.yml
+name: Close PRs with Merge Conflicts
+ 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  workflow_dispatch:
-
+ 
 jobs:
-  close-conflicted-pr:
+  check_merge_conflicts:
     runs-on: ubuntu-latest
-
+ 
     steps:
-      - name: Check for merge conflicts and close if any
+      - name: Check if PR has merge conflicts
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
-            if (!pr) {
-              core.setFailed("No pull request found in context.");
-              return;
-            }
-
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const pull_number = pr.number;
-
-            let attempts = 0;
-            let mergeable = null;
-
-            // Retry up to 10 times with 5 seconds delay to get mergeable status
-            while (mergeable === null && attempts < 10) {
-              const { data: prData } = await github.rest.pulls.get({
-                owner,
-                repo,
-                pull_number
-              });
-
-              mergeable = prData.mergeable;
-
-              if (mergeable === null) {
-                console.log(`Attempt ${attempts + 1}: mergeable still null. Retrying in 5 seconds...`);
-                await new Promise(resolve => setTimeout(resolve, 5000));
-              }
-
-              attempts++;
-            }
-
-            if (mergeable === false) {
-              console.log(`❌ PR #${pull_number} has merge conflicts. Closing PR.`);
-
-              // Add a comment on the PR
+            const { data: prDetails } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+ 
+            if (prDetails.mergeable === false) {
+              console.log(`❌ PR #${pr.number} has merge conflicts. Closing...`);
+ 
               await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: pull_number,
-                body: "🚫 This pull request has merge conflicts and has been closed automatically. Please resolve the conflicts and open a new PR."
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: "🚫 This pull request has merge conflicts and will be closed automatically. Please resolve conflicts and open a new PR.",
               });
-
-              // Try to close the PR with error handling
-              try {
-                await github.rest.pulls.update({
-                  owner,
-                  repo,
-                  pull_number,
-                  state: 'closed'
-                });
-                console.log(`✅ Successfully closed PR #${pull_number}`);
-              } catch (error) {
-                core.setFailed(`Failed to close PR #${pull_number}: ${error.message}`);
-              }
-
-            } else if (mergeable === true) {
-              console.log(`✅ PR #${pull_number} is mergeable.`);
+ 
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                state: 'closed',
+              });
+            } else if (prDetails.mergeable === null) {
+              console.log("Mergeable state is unknown. GitHub is still calculating. Try again.");
+              throw new Error("Mergeable state is unknown. Please try again.");
             } else {
-              console.log(`⚠️ Could not determine mergeable status for PR #${pull_number} after retries.`);
+              console.log(`✅ PR #${pr.number} is mergeable.`);
             }
